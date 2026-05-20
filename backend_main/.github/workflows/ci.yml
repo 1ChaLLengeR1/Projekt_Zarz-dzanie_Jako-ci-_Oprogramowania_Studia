@@ -1,0 +1,55 @@
+name: CI - Production
+
+on:
+  workflow_call:
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      REPOSITORY:
+        required: true
+
+jobs:
+  ci_run:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set APP_VERSION timestamp
+        id: set-version
+        run: echo "APP_VERSION=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build --no-cache --pull -t ${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:${{ env.APP_VERSION }} -f infra/dockerfiles/dockerfile/prod.dockerfile .
+          docker tag ${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:${{ env.APP_VERSION }} ${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:latest
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:${{ env.APP_VERSION }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:latest
+
+      - name: Save app version to artifact
+        run: echo "${{ env.APP_VERSION }}" > app_version.txt
+
+      - name: Save image name to artifact
+        run: echo "${{ secrets.DOCKER_USERNAME }}/${{ secrets.REPOSITORY }}:${{ env.APP_VERSION }}" > image_name.txt
+
+      - name: Upload app version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app_version
+          path: app_version.txt
+
+      - name: Upload image name artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image_name
+          path: image_name.txt

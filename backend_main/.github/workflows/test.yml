@@ -1,0 +1,77 @@
+name: CI - Run Tests (Local Test Environment)
+
+on:
+  workflow_call:
+    secrets:
+      DOPPLER_TOKEN:
+        required: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Create env directory and download from Doppler
+        run: |
+          mkdir -p env
+          doppler secrets download \
+            --token ${{ secrets.DOPPLER_TOKEN }} \
+            --project test \
+            --config local \
+            --no-file \
+            --format env > env/local.env
+          
+          # OVERRIDE Database and Redis for local test environment
+          echo "" >> env/local.env
+          echo "# Local test environment overrides" >> env/local.env
+          echo "DB_HOST=localhost" >> env/local.env
+          echo "DB_PORT=5432" >> env/local.env
+          echo "DB_USER=test_user" >> env/local.env
+          echo "DB_PASSWORD=test_pass" >> env/local.env
+          echo "DB_DBNAME=test_db" >> env/local.env
+          
+          echo "Created env/local.env file with local test overrides"
+
+      - name: Build migration image
+        run: docker build -f infra/dockerfiles/dockerfile/migration.dockerfile -t myapp-migration .
+
+      - name: Build test image
+        run: docker build -f infra/dockerfiles/dockerfile/test.dockerfile -t myapp-test .
+
+      - name: Run migrations on test DB
+        run: |
+          docker run --rm \
+            --network host \
+            -v $(pwd)/env:/app/env \
+            myapp-migration bash -c "source /app/scripts/load_env.sh local && /app/scripts/database/migration_down.sh local && /app/scripts/database/migration_up.sh local"
+
+      - name: Run tests on local test environment
+        run: |
+          docker run --rm \
+            --network host \
+            -v $(pwd)/env:/app/env \
+            myapp-test bash -c \
+              "source /app/scripts/load_env.sh local && \
+               pytest -s -v"

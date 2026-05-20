@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: ../../..
+      dockerfile: infra/dockerfiles/dockerfile/local.dockerfile
+    ports:
+      - "8000:8000"
+    command: bash infra/scripts/database/docker_entrypoint.sh
+    env_file:
+      - ../../../env/local.env
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  postgresql:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../../../env/local.env
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d backend_main_project_1"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  postgres_local_data:

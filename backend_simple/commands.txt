@@ -1,0 +1,36 @@
+# ── Instalacja zależności ──────────────────────────────────────────────────────
+pip install -r requirements.txt
+
+# venv
+aktywacja: source venv/Scripts/activate
+
+# ── Alembic ───────────────────────────────────────────────────────────────────
+
+# Zastosuj wszystkie migracje (up) — tworzy tabele w bazie
+alembic upgrade head
+
+# Cofnij ostatnią migrację (down) — usuwa tabele
+alembic downgrade -1
+
+# Cofnij wszystkie migracje do zera
+alembic downgrade base
+
+
+# ── Uruchomienie serwera ───────────────────────────────────────────────────────
+uvicorn main:app --reload
+
+# Swagger UI dostępne pod:
+# http://127.0.0.1:8000/docs
+
+
+# ── Docker Compose ─────────────────────────────────────────────────────────────
+
+# Uruchom z przebudowaniem obrazu aplikacji
+docker-compose up -d --build
+
+# Uruchom wszystkie kontenery (app + db + nginx) w tle
+docker-compose up -d
+
+# Zatrzymaj kontenery
+docker-compose down
+

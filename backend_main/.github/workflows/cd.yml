@@ -1,0 +1,76 @@
+name: CD - Production
+
+on:
+  workflow_call:
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      DOPPLER_TOKEN:
+        required: true
+      HOST_NAME:
+        required: true
+      HOST_IP:
+        required: true
+      HOST_NAME_SSH:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+      REPOSITORY:
+        required: true
+      GH_PASSWORD:
+        required: true
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add SSH host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_IP }} >> ~/.ssh/known_hosts
+
+      - name: Debug SSH Connection
+        run: ssh -T ${{ secrets.HOST_NAME_SSH }} || true
+
+      - name: Remove, recreate backend directory, clone repository, and move .env directory
+        run: |
+          ssh ${{ secrets.HOST_NAME_SSH }} '
+            rm -rf /var/www/example_folder/backend &&
+            mkdir -p /var/www/example_folder/backend &&
+            cd /var/www/example_folder/backend &&
+            git clone --branch main https://x-access-token:${{ secrets.GH_PASSWORD }}@github.com/example-org/my-app.git . &&
+            mkdir -p ./env &&
+            doppler secrets download --token ${{ secrets.DOPPLER_TOKEN }} --project my-app --config prod --no-file --format env > ./env/prod.env &&
+            sed -E -i "s/=\"([^\"]*)\"$/=\1/" ./env/prod.env
+          '
+      - name: Change env_mode to prod
+        run: |
+          ssh ${{ secrets.HOST_NAME_SSH }} '
+            cd /var/www/example_folder/backend &&
+            chmod +x ./scripts/run_mode.sh
+            ./scripts/run_mode.sh prod
+          '
+
+      - name: Deploy Docker Swarm stack
+        run: |
+          ssh ${{ secrets.HOST_NAME_SSH }} '
+            cd /var/www/example_folder/backend &&
+
+            echo ">>> Aktualizacja stacka aplikacji..."
+            docker stack deploy --with-registry-auth -c infra/dockerfiles/compose/prod.swarm.docker-compose.yaml my-app-production
+
+            echo ">>> Wymuszenie restartu wszystkich usług stacka..."
+            docker service ls --filter label=com.docker.stack.namespace=my-app-production -q | xargs -r -n1 docker service update --force
+
+            echo ">>> Usuwanie nieużywanych obrazów..."
+            docker image prune -f
+          '

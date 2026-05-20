@@ -1,0 +1,27 @@
+[project]
+name = "backend-main"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.1",
+    "uvicorn[standard]>=0.30.3",
+    "python-multipart>=0.0.9",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9.9",
+    "alembic>=1.13.2",
+    "argon2-cffi>=23.1.0",
+    "pydantic[email]>=2.0",
+]
+
+[tool.setuptools]
+packages = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+]
+prod = [
+    "gunicorn>=22.0",
+]

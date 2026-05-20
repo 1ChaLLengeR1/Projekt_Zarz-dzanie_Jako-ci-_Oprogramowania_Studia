@@ -1,0 +1,46 @@
+name: Runner - Staging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+    secrets:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+
+  ci:
+    needs: test
+    uses: ./.github/workflows/ci.yml
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      REPOSITORY: ${{ secrets.REPOSITORY }}
+
+  cd:
+    needs: ci
+    uses: ./.github/workflows/cd.yml
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      REPOSITORY: ${{ secrets.REPOSITORY }}
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      HOST_NAME: ${{ secrets.HOST_NAME }}
+      HOST_IP: ${{ secrets.HOST_IP }}
+      HOST_NAME_SSH: ${{ secrets.HOST_NAME_SSH }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      GH_PASSWORD: ${{ secrets.GH_PASSWORD }}
+
+  report:
+    needs: [ci, cd]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Output information
+        run: |
+          echo "Something went wrong..."
+          echo "${{ toJSON(github) }}"
+
