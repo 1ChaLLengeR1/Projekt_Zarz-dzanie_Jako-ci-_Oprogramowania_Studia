@@ -17,10 +17,10 @@ alembic downgrade base
 
 
 # ── Uruchomienie serwera ───────────────────────────────────────────────────────
-uvicorn main:app --reload
+uvicorn main:app --reload --port 5555
 
 # Swagger UI dostępne pod:
-# http://127.0.0.1:8000/docs
+# http://127.0.0.1:5555/docs
 
 
 # ── Docker Compose ─────────────────────────────────────────────────────────────

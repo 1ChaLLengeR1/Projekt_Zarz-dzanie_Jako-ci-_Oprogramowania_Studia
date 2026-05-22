@@ -1,0 +1,11 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class RegisterUserResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    is_active: bool
+    created_at: datetime

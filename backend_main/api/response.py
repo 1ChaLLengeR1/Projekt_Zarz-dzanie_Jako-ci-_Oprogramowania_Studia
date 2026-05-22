@@ -1,5 +1,6 @@
 from typing import Generic, Literal, TypeVar
 
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 DATA = TypeVar("DATA")
@@ -25,3 +26,17 @@ class ApiSuccessResponse(BaseModel, Generic[DATA, ADDITIONALS]):
     status_code: int = 200
     data: DATA
     additional: ADDITIONALS | None = None
+
+
+def error_response(error: dict, type_module: str) -> JSONResponse:
+    return JSONResponse(
+        content=ApiErrorResponse(
+            status_code=error.get("status_code", 400),
+            data=ApiErrorData(
+                message=error.get("message", "Unknown error"),
+                type_module=error.get("type_module", type_module),
+                type_error=error.get("type_error", "error"),
+                key_type_error=error.get("type_error", "error"),
+            ),
+        ).model_dump(mode="json"),
+    )

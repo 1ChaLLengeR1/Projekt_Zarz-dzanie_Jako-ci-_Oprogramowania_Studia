@@ -28,6 +28,13 @@ migrate_base:
 run:
 	uv run uvicorn main:app --reload
 
+test:
+	uv run pytest -s -v
+
+test_full:
+	uv run pytest -s -v -m ""
+
+
 
 # ============================================================================
 # Docker Compose (local)
