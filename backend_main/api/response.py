@@ -29,9 +29,11 @@ class ApiSuccessResponse(BaseModel, Generic[DATA, ADDITIONALS]):
 
 
 def error_response(error: dict, type_module: str) -> JSONResponse:
+    status_code = error.get("status_code", 400)
     return JSONResponse(
+        status_code=status_code,
         content=ApiErrorResponse(
-            status_code=error.get("status_code", 400),
+            status_code=status_code,
             data=ApiErrorData(
                 message=error.get("message", "Unknown error"),
                 type_module=error.get("type_module", type_module),
